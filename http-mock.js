@@ -1,9 +1,9 @@
 (function () {
-    'use strict';
+    "use strict";
 
-    function httpMock(mappings) {
+    function HttpMock(mappings) {
         var self = this;
-        self.mappings = mappings;
+        self.mappings = [].slice.call(arguments);
 
         var _open = window.XMLHttpRequest.prototype.open;
         window.XMLHttpRequest.prototype.open = open;
@@ -14,8 +14,16 @@
             for (var i = 0; i < self.mappings.length; i++) {
                 var mapping = self.mappings[i];
 
-                if (matches(args[1], mapping.pattern)) {
-                    return mock.call(this, args, mapping);
+                if (typeof mapping.pattern !== "undefined") {
+                    if (matches(args[1], mapping.pattern)) {
+                        return mock.call(this, args, mapping);
+                    }
+                } else if (typeof mapping.matcher === "function") {
+                    if (mapping.matcher.call(this)) {
+                        return mock.call(this, args, mapping);
+                    }
+                } else {
+                    throw "Invalid mock format. Please provide pattern or matcher.";
                 }
             }
 
@@ -28,26 +36,26 @@
             } else if (mapping.params) {
                 return resolve.call(this, mapping.params);
             } else {
-                throw "Invalid mock format";
+                throw "Invalid mock format. Please provide file or params.";
             }
         }
 
         function redirect(args, file) {
-            args[0] = 'GET';
+            args[0] = "GET";
             args[1] = file;
             return _open.apply(this, args);
         }
 
         function resolve(params) {
-            redefine(this, 'readyState', 4);
-            redefine(this, 'status', 200);
-            redefine(this, 'send', function () {});
+            redefine(this, "readyState", 4);
+            redefine(this, "status", 200);
+            redefine(this, "send", function () {});
 
             for (var param in params) {
                 redefine(this, param, params[param]);
             }
 
-            if (typeof this.onreadystatechange === 'function') {
+            if (typeof this.onreadystatechange === "function") {
                 this.onreadystatechange.call(this);
             }
         }
@@ -63,5 +71,5 @@
         }
     }
 
-    window.httpMock = httpMock;
+    window.HttpMock = HttpMock;
 })();
